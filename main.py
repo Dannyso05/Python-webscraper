@@ -1,6 +1,6 @@
 from requests import get 
 from bs4 import BeautifulSoup
-
+sdsd
 websites = (
     "https://weworkremotely.com/remote-jobs/search?utf8=%E2%9C%93&term=",
     "https://www.linkedin.com/jobs/search/?currentJobId=3586717182&keywords=",
