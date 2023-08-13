@@ -1,66 +1,43 @@
+import time
+import requests
 from bs4 import BeautifulSoup
-from extract import *
+from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+# Set up Selenium with Chrome in headless mode
+chrome_options = Options()
+driver = webdriver.Chrome(options=chrome_options)
 
-def get_page_count(keyword):
+# Define job search parameters
+job_title = "python developer"
+location = "New York"
 
-    options = Options()
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--headless")  # Run Chrome in headless mode (without GUI)
-    
+# Build the Indeed search URL
+search_url = f"https://www.indeed.com/jobs?q={job_title.replace(' ', '+')}&l={location.replace(' ', '+')}"
 
-    browser = webdriver.Chrome(options=options)
-    browser.get(f"https://kr.indeed.com/jobs?q={keyword}")
+# Use Requests and Beautiful Soup to fetch job links from search results
+response = requests.get(search_url)
+soup = BeautifulSoup(response.content, "html.parser")
 
-    soup = BeautifulSoup(browser.page_source, "html.parser")
-    pagination = soup.find('nav',attrs={"aria-label": "pagination"})
-    pages = pagination.find_all('div',recursive = False)
-    count =len(pages)
-    if count == 0:
-        return 1
-    else:
-        return count -1
+job_links = []
+for link in soup.find_all("a", {"class": "jobtitle"}):
+    job_links.append(link.get("href"))
 
+# Loop through job links using Selenium and extract job details
+for link in job_links:
+    job_url = f"https://www.indeed.com{link}"
+    driver.get(job_url)
+    time.sleep(2)  # Give the page some time to load
 
-def extract_indeed_jobs(keyword):
-    pages = get_page_count(keyword)
-    print("found", pages, "pages")
-    results = []
+    job_title = driver.find_element(By.CLASS_NAME, "jobsearch-JobInfoHeader-title").text
+    company_name = driver.find_element(By.CLASS_NAME, "jobsearch-CompanyAvatar-companyLink").text
+    job_description = driver.find_element(By.ID, "jobDescriptionText").text
 
-    for page in range (pages):
-        options = Options()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
+    print("Job Title:", job_title)
+    print("Company:", company_name)
+    print("Job Description:", job_description)
+    print("=" * 50)
 
-        browser = webdriver.Chrome(options=options)
-        final_url = (f"https://kr.indeed.com/jobs?q={keyword}&start={page*10}")
-        print("Requesting", final_url)
-        browser.get(final_url)
-
-        soup = BeautifulSoup(browser.page_source, "html.parser")
-        job_lists = soup.find("ul", class_="jobsearch-ResultsList")
-        jobs = job_lists.find_all('li', recursive=False)
-
-        for job in jobs:
-            zone = job.find('div', class_="mosaic-zone")
-            if zone == None:
-                anchor = job.select_one("h2 a")
-                title = anchor['aria-label']
-                link = anchor['href']
-                company = job.find("span", class_="companyName")
-                location = job.find("div", class_="companyLocation")
-                job_data = {
-                'link' : f"https://kr.indeed.com/{link}",
-                'company' : company.string,
-                'location' : location.string,
-                'positon' : title
-                }
-                results.append(job_data)
-    return results
-
-
-jobs = extract_indeed_jobs("python")
-print((jobs))
+# Clean up
+driver.quit()
