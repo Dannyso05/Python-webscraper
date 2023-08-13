@@ -1,38 +1,66 @@
-from requests import get 
 from bs4 import BeautifulSoup
-websites = (
-    "https://weworkremotely.com/remote-jobs/search?utf8=%E2%9C%93&term=",
-    "https://www.linkedin.com/jobs/search/?currentJobId=3586717182&keywords=",
-    "https://ca.indeed.com/jobs?q="
-)
+from extract import *
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
-website = "https://weworkremotely.com/remote-jobs/search?utf8=%E2%9C%93&term="
 
-key = str(input())
-response = get(f"{website}{key}")
+def get_page_count(keyword):
 
-if response.status_code != 200:
-    print("Can't request website")
-else:
-    result = []
-    soup = BeautifulSoup(response.text, "html.parser")
-    jobs =soup.find_all('section',class_="jobs")
-    for job in jobs:
-        job_posts = job.find_all('li')
-        job_posts.pop(-1)
-        for post in job_posts:
-            anchors = post.find_all('a')
-            anchor = anchors[1]
-            link = anchor['href']
-            company, time, region = anchor.find_all('span', class_="company")
-            title = anchor.find('span', class_='title')
-        
-            job_data = {
-                "company": company.string,
-                "time":time.string,
-                "region":region.string,
-                "title":title.string
-            }
+    options = Options()
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--headless")  # Run Chrome in headless mode (without GUI)
+    
 
-            result.append(job_data)
-        print(job_data)
+    browser = webdriver.Chrome(options=options)
+    browser.get(f"https://kr.indeed.com/jobs?q={keyword}")
+
+    soup = BeautifulSoup(browser.page_source, "html.parser")
+    pagination = soup.find('nav',attrs={"aria-label": "pagination"})
+    pages = pagination.find_all('div',recursive = False)
+    count =len(pages)
+    if count == 0:
+        return 1
+    else:
+        return count -1
+
+
+def extract_indeed_jobs(keyword):
+    pages = get_page_count(keyword)
+    print("found", pages, "pages")
+    results = []
+
+    for page in range (pages):
+        options = Options()
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+
+        browser = webdriver.Chrome(options=options)
+        final_url = (f"https://kr.indeed.com/jobs?q={keyword}&start={page*10}")
+        print("Requesting", final_url)
+        browser.get(final_url)
+
+        soup = BeautifulSoup(browser.page_source, "html.parser")
+        job_lists = soup.find("ul", class_="jobsearch-ResultsList")
+        jobs = job_lists.find_all('li', recursive=False)
+
+        for job in jobs:
+            zone = job.find('div', class_="mosaic-zone")
+            if zone == None:
+                anchor = job.select_one("h2 a")
+                title = anchor['aria-label']
+                link = anchor['href']
+                company = job.find("span", class_="companyName")
+                location = job.find("div", class_="companyLocation")
+                job_data = {
+                'link' : f"https://kr.indeed.com/{link}",
+                'company' : company.string,
+                'location' : location.string,
+                'positon' : title
+                }
+                results.append(job_data)
+    return results
+
+
+jobs = extract_indeed_jobs("python")
+print((jobs))
