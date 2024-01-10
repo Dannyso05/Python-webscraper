@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobSearch</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+  
+<body>
+<h1>Search Results for "{{keyword}}":</h1>
+
+  <main class="container">
+    <article>
+    <header>
+      <div class="grid">
+        <div><span>Jobs scraped from indeed, remoteok, and weworkremotely</span></div>
+        <div></div>
+        <div>Total # Job postings found: {{length}}</div>
+      </div>
+    </header>
+  <figure><table role="grid">
+    <thead>
+      <tr>
+        <th>Position</th>
+        <th>Company</th>
+        <th>Location</th>
+        <th>Link</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+        <tr>
+          <td>{{job.company}}</td>
+          <td>{{job.position}}</td>
+          <td>{{job.location}}</td>
+          <td><a href="{{job.link}}" target="_blank">visit</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></figure>
+    </article>
+    </main>
+    
+</body>
+    
+</html>
+
+
+
