@@ -1,7 +1,7 @@
 from methods import *
 from flask import Flask,render_template,request
 
-
+#app
 app = Flask ("JobSearch")
 
 @app.route ("/")
@@ -12,7 +12,7 @@ def home():
 def search():
     keyword=request.args.get("keyword")
     jobs = get_jobs(keyword)
-    return render_template("search.html", keyword=keyword, jobs=jobs,length = len(jobs))
+    return render_template("search.html", keyword=keyword, jobs=jobs,length = jobs.length())
 
 app.run("127.0.0.1", debug=True)
 
