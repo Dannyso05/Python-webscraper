@@ -1,43 +1,18 @@
-import time
-import requests
-from bs4 import BeautifulSoup
-from selenium.webdriver.common.by import By
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from methods import *
+from flask import Flask,render_template,request
 
-# Set up Selenium with Chrome in headless mode
-chrome_options = Options()
-driver = webdriver.Chrome(options=chrome_options)
 
-# Define job search parameters
-job_title = "python developer"
-location = "New York"
+app = Flask ("JobSearch")
 
-# Build the Indeed search URL
-search_url = f"https://www.indeed.com/jobs?q={job_title.replace(' ', '+')}&l={location.replace(' ', '+')}"
+@app.route ("/")
+def home():
+    return render_template("home.html")
 
-# Use Requests and Beautiful Soup to fetch job links from search results
-response = requests.get(search_url)
-soup = BeautifulSoup(response.content, "html.parser")
+@app.route ("/search")
+def search():
+    keyword=request.args.get("keyword")
+    jobs = get_jobs(keyword)
+    return render_template("search.html", keyword=keyword, jobs=jobs,length = len(jobs))
 
-job_links = []
-for link in soup.find_all("a", {"class": "jobtitle"}):
-    job_links.append(link.get("href"))
+app.run("127.0.0.1", debug=True)
 
-# Loop through job links using Selenium and extract job details
-for link in job_links:
-    job_url = f"https://www.indeed.com{link}"
-    driver.get(job_url)
-    time.sleep(2)  # Give the page some time to load
-
-    job_title = driver.find_element(By.CLASS_NAME, "jobsearch-JobInfoHeader-title").text
-    company_name = driver.find_element(By.CLASS_NAME, "jobsearch-CompanyAvatar-companyLink").text
-    job_description = driver.find_element(By.ID, "jobDescriptionText").text
-
-    print("Job Title:", job_title)
-    print("Company:", company_name)
-    print("Job Description:", job_description)
-    print("=" * 50)
-
-# Clean up
-driver.quit()

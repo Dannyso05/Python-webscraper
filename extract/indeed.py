@@ -1,46 +1,69 @@
-import time
-import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.options import Options
+import time
 
-# Set up Selenium
-chrome_options = ChromeOptions()
-chrome_options.add_argument("--headless")  # Run Chrome in headless mode (without GUI)
-chrome_service = ChromeService(executable_path="path_to_chromedriver")  # Replace with actual chromedriver path
-driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
 
-# Define job search parameters
-job_title = "python developer"
-location = "New York"
+def get_page_count(keyword):
 
-# Build the Indeed search URL
-search_url = f"https://www.indeed.com/jobs?q={job_title.replace(' ', '+')}&l={location.replace(' ', '+')}"
+    options = Options()
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+   #options.add_argument("--headless")  # Run Chrome in headless mode (without GUI) 
+    #error here
+    
 
-# Use Requests and Beautiful Soup to fetch job links from search results
-response = requests.get(search_url)
-soup = BeautifulSoup(response.content, "html.parser")
+    browser = webdriver.Chrome(options=options)
+    browser.get(f"https://ca.indeed.com/jobs?q={keyword}")
+    time.sleep(12)
 
-job_links = []
-for link in soup.find_all("a", {"class": "jobtitle"}):
-    job_links.append(link.get("href"))
+    soup = BeautifulSoup(browser.page_source, "html.parser")
+    print(soup)
 
-# Loop through job links using Selenium and extract job details
-for link in job_links:
-    job_url = f"https://www.indeed.com{link}"
-    driver.get(job_url)
-    time.sleep(2)  # Give the page some time to load
+    pagination = soup.find('nav', role_="navigation")
+    pag = pagination.find('ul')
+    pages = pag.find_all('li', recursive = False)
+    count =len(pages)
+    if count == 0:
+        return 1
+    else:
+        return count -1
+    
 
-    job_title = driver.find_element(By.CLASS_NAME, "jobsearch-JobInfoHeader-title").text
-    company_name = driver.find_element(By.CLASS_NAME, "jobsearch-CompanyAvatar-companyLink").text
-    job_description = driver.find_element(By.ID, "jobDescriptionText").text
+def extract_indeed_jobs(keyword):
+    pages = get_page_count(keyword)
+    print("found", pages, "pages")
+    results = []
 
-    print("Job Title:", job_title)
-    print("Company:", company_name)
-    print("Job Description:", job_description)
-    print("=" * 50)
+    for page in range (pages):
+        options = Options()
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        browser = webdriver.Chrome(options=options)
+        final_url = (f"https://ca.indeed.com/jobs?q={keyword}&start={page*10}")
+        print("Requesting", final_url)
+        browser.get(final_url)
+        soup = BeautifulSoup(browser.page_source, "html.parser")
 
-# Clean up
-driver.quit()
+        job_lists = soup.find('div',id="mosaic-jobResults",class_="mosaic-zone")
+        print(job_lists)
+        j = job_lists.find('div')
+        j2=j.find('ul')
+        jobs = j2.find_all('li', recursive=False)
+
+        for job in jobs:
+            zone = job.find('div', class_="mosaic-zone")
+            if zone == None:
+                anchor = job.select_one("h2 a")
+                title = anchor['aria-label']
+                link = anchor['href']
+                company = job.find("span", attrs={"data-testid": "company-name"})
+                location = job.find("div", attrs={"data-testid": "text-location"})
+                job_data = {
+                'link' : f"https://ca.indeed.com/{link}",
+                'company' : company.string.replace(",", " "),
+                'location' : location.string.replace(",", ""),
+                'position' : title[16:].replace(",", "/"),
+                }
+                results.append(job_data)
+    return results
